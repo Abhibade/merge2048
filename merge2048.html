@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MERGE 2048 — Power Edition</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#0a0a0f; --panel:#13131c; --border:#1e1e2e;
+  --accent:#7c6af7; --accent2:#f76a8a; --gold:#f7c26a;
+  --text:#e8e8f0; --muted:#6b6b8a; --empty:#1a1a28;
+}
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'DM Sans',sans-serif;
+  min-height:100vh; overflow-x:hidden;
+  -webkit-user-select:none; user-select:none;
+}
+.screen { display:none; flex-direction:column; align-items:center; min-height:100vh; }
+.screen.active { display:flex; }
+
+/* ── HOME ── */
+#homeScreen { justify-content:flex-start; padding:60px 20px 40px; position:relative; overflow:hidden; }
+.glow1 { position:absolute; width:400px; height:400px; border-radius:50%; background:radial-gradient(circle,rgba(124,106,247,.18) 0%,transparent 70%); top:-100px; left:50%; transform:translateX(-50%); pointer-events:none; }
+.glow2 { position:absolute; width:280px; height:280px; border-radius:50%; background:radial-gradient(circle,rgba(247,106,138,.12) 0%,transparent 70%); bottom:60px; right:-60px; pointer-events:none; }
+.home-logo { font-family:'Syne',sans-serif; font-size:3rem; font-weight:800; background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-align:center; line-height:1; margin-bottom:4px; }
+.home-sub { color:var(--muted); font-size:.72rem; letter-spacing:3px; text-transform:uppercase; text-align:center; margin-bottom:16px; }
+
+/* top bar pinned top-right on home */
+.home-topbar { position:absolute; top:16px; right:16px; display:flex; gap:8px; z-index:10; }
+.home-chip { background:var(--panel); border:1px solid var(--border); border-radius:50px; padding:6px 14px; display:flex; align-items:center; gap:5px; font-size:.82rem; font-weight:600; box-shadow:0 2px 12px rgba(0,0,0,.3); }
+.home-chip .ic { font-size:.95rem; }
+.coin-val { color:var(--gold); }
+.life-val { color:#f76a8a; }
+
+.tile-preview { display:grid; grid-template-columns:repeat(4,54px); gap:7px; margin-bottom:24px; }
+.tp { width:54px; height:54px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:.95rem; animation:floatT 3s ease-in-out infinite; }
+.tp:nth-child(2){animation-delay:.3s} .tp:nth-child(3){animation-delay:.6s} .tp:nth-child(4){animation-delay:.9s}
+.tp:nth-child(5){animation-delay:1.2s} .tp:nth-child(6){animation-delay:1.5s} .tp:nth-child(7){animation-delay:1.8s} .tp:nth-child(8){animation-delay:2.1s}
+@keyframes floatT { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+.home-stats { display:flex; flex-direction:column; gap:8px; width:100%; max-width:320px; margin-bottom:20px; }
+.hstat-row { display:flex; gap:8px; }
+.hstat {
+  flex:1; background:var(--panel); border:1px solid var(--border);
+  border-radius:12px; padding:12px 14px;
+  display:flex; align-items:center; gap:10px;
+}
+.hstat-icon { font-size:1.4rem; flex-shrink:0; }
+.hstat-info { display:flex; flex-direction:column; }
+.hstat .val { font-family:'Syne',sans-serif; font-size:1.2rem; font-weight:800; color:var(--text); line-height:1; }
+.hstat .lbl { font-size:.6rem; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase; margin-top:2px; }
+.hstat.accent-gold { border-color:rgba(247,194,106,.25); }
+.hstat.accent-gold .val { color:var(--gold); }
+.hstat.accent-purple { border-color:rgba(124,106,247,.25); }
+.hstat.accent-purple .val { color:var(--accent); }
+.hstat.accent-pink { border-color:rgba(247,106,138,.25); }
+.hstat.accent-pink .val { color:var(--accent2); }
+
+.home-btns { display:flex; flex-direction:column; gap:10px; width:100%; max-width:320px; margin-bottom:20px; }
+.hbtn { padding:15px; border-radius:13px; border:none; font-family:'DM Sans',sans-serif; font-size:.95rem; font-weight:600; cursor:pointer; transition:transform .15s,opacity .15s; letter-spacing:.3px; }
+.hbtn:active { transform:scale(.97); }
+.hbtn.pri { background:linear-gradient(135deg,var(--accent),#6a58e0); color:#fff; }
+.hbtn.sec { background:var(--panel); color:var(--text); border:1px solid var(--border); }
+.hbtn.daily { background:linear-gradient(135deg,rgba(247,106,138,.2),rgba(124,106,247,.2)); border:1px solid rgba(247,106,138,.4); color:var(--text); }
+.hbtn.shop-btn { background:linear-gradient(135deg,rgba(247,194,106,.15),rgba(247,106,138,.15)); border:1px solid rgba(247,194,106,.35); color:var(--gold); }
+
+.htp { background:var(--panel); border:1px solid var(--border); border-radius:13px; padding:14px 18px; width:100%; max-width:320px; }
+.htp h3 { font-size:.68rem; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:10px; }
+.htp-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.htp-row:last-child { margin-bottom:0; }
+.htp-ic { font-size:1.2rem; width:28px; text-align:center; flex-shrink:0; }
+.htp-t { font-size:.8rem; color:var(--muted); line-height:1.4; }
+.htp-t b { color:var(--text); font-weight:500; }
+
+/* ── SHOP SCREEN ── */
+#shopScreen { padding:20px 16px 40px; }
+.shop-header { display:flex; align-items:center; justify-content:space-between; width:100%; max-width:360px; margin-bottom:20px; }
+.shop-title { font-family:'Syne',sans-serif; font-size:1.5rem; font-weight:800; color:var(--gold); }
+.back-btn { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:6px 12px; color:var(--muted); font-size:.8rem; font-weight:600; cursor:pointer; }
+.back-btn:hover { border-color:var(--accent); color:var(--text); }
+.coin-display { background:var(--panel); border:1px solid rgba(247,194,106,.3); border-radius:50px; padding:7px 16px; display:flex; align-items:center; gap:6px; font-size:.9rem; font-weight:700; color:var(--gold); }
+.shop-section { font-size:.68rem; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:10px; width:100%; max-width:360px; }
+.shop-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; max-width:360px; margin-bottom:20px; }
+.shop-card { background:var(--panel); border:1px solid var(--border); border-radius:13px; padding:16px 12px; text-align:center; cursor:pointer; transition:border-color .15s, transform .12s; }
+.shop-card:hover { border-color:var(--accent); }
+.shop-card:active { transform:scale(.96); }
+.shop-card .sc-icon { font-size:2rem; margin-bottom:8px; }
+.shop-card .sc-name { font-size:.85rem; font-weight:600; color:var(--text); margin-bottom:4px; }
+.shop-card .sc-desc { font-size:.72rem; color:var(--muted); margin-bottom:10px; line-height:1.4; }
+.shop-card .sc-price { display:inline-flex; align-items:center; gap:4px; background:rgba(247,194,106,.12); border:1px solid rgba(247,194,106,.3); border-radius:50px; padding:4px 12px; font-size:.8rem; font-weight:700; color:var(--gold); }
+.shop-card .sc-price.ad { background:rgba(124,106,247,.12); border-color:rgba(124,106,247,.3); color:var(--accent); }
+.shop-card.disabled { opacity:.45; pointer-events:none; }
+
+
+#gameScreen { padding:10px 16px 40px; }
+.game-header { display:flex; align-items:center; justify-content:space-between; width:100%; max-width:360px; margin-bottom:10px; }
+.game-title { font-family:'Syne',sans-serif; font-size:1.3rem; font-weight:800; background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+
+/* Lives bar */
+.lives-bar { display:flex; align-items:center; justify-content:space-between; width:100%; max-width:360px; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:8px 14px; margin-bottom:10px; }
+.lives-left { display:flex; align-items:center; gap:6px; }
+.life-hearts { display:flex; gap:3px; }
+.heart { font-size:1.1rem; transition:transform .2s; }
+.heart.empty { opacity:.25; filter:grayscale(1); }
+.lives-timer { font-size:.72rem; color:var(--muted); }
+.lives-timer b { color:var(--accent2); }
+.lives-coin-bar { display:flex; align-items:center; gap:5px; font-size:.85rem; font-weight:700; color:var(--gold); }
+
+.scores { display:flex; gap:8px; width:100%; max-width:360px; margin-bottom:8px; }
+.sbox { flex:1; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:7px; text-align:center; }
+.sbox .lbl { font-size:.58rem; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:2px; }
+.sbox .num { font-family:'Syne',sans-serif; font-size:1.2rem; font-weight:700; }
+.sbox.gold .num { color:var(--gold); }
+
+.mode-lbl { font-size:.66rem; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:7px; }
+.mode-lbl b { color:var(--accent2); }
+
+.timer-wrap { width:100%; max-width:360px; margin-bottom:7px; display:none; }
+.timer-lbl { font-size:.73rem; color:var(--muted); text-align:center; margin-bottom:3px; }
+.timer-lbl b { color:var(--text); }
+.timer-track { background:var(--panel); border:1px solid var(--border); border-radius:50px; height:7px; overflow:hidden; }
+.timer-fill { height:100%; border-radius:50px; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width 1s linear; }
+
+.pubs { display:flex; gap:7px; margin-bottom:9px; }
+.pub { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:6px 10px; cursor:pointer; text-align:center; transition:border-color .15s,background .15s; flex:1; }
+.pub:hover { border-color:var(--accent); }
+.pub.on { border-color:var(--accent2); background:rgba(247,106,138,.1); }
+.pub.grey { opacity:.45; }
+.pub .ic { font-size:1.1rem; }
+.pub .nm { font-size:.58rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+.pub .ct { font-size:.7rem; color:var(--gold); font-weight:600; }
+
+.grid-outer { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:7px; margin-bottom:10px; position:relative; touch-action:none; }
+.grid { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; width:min(350px,88vw); }
+.cell { aspect-ratio:1; background:var(--empty); border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:clamp(.68rem,2.5vw,1rem); border:1px solid transparent; }
+.cell.bomb-target { cursor:crosshair !important; animation:bombPulse 0.6s ease-in-out infinite !important; border:2px solid #f76a8a !important; }
+@keyframes bombPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.75;transform:scale(.94)} }
+.cell.double-target { cursor:crosshair !important; animation:doublePulse 0.6s ease-in-out infinite !important; border:2px solid #f7c26a !important; }
+@keyframes doublePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.8;transform:scale(1.06)} }
+@keyframes tpop  { 0%{transform:scale(.4);opacity:0} 100%{transform:scale(1);opacity:1} }
+@keyframes tbump { 0%{transform:scale(1)} 50%{transform:scale(1.18)} 100%{transform:scale(1)} }
+
+.v2{background:#1e1e35;color:#c0c0e0} .v4{background:#252545;color:#d0d0f0}
+.v8{background:#2e2060;color:#b0a8ff;border-color:#3d2e80} .v16{background:#3b1f70;color:#c8a8ff;border-color:#5a3090}
+.v32{background:#5c2d91;color:#e0c8ff;border-color:#7a4ab5} .v64{background:#7c3daf;color:#f0e0ff;border-color:#9c5dcf}
+.v128{background:#c0392b;color:#ffe0d8;border-color:#e05040} .v256{background:#e67e22;color:#fff3d8;border-color:#f39c42}
+.v512{background:#f1c40f;color:#2d2000;border-color:#f8d73e} .v1024{background:#27ae60;color:#d8ffe8;border-color:#3dc870}
+.v2048{background:linear-gradient(135deg,#f7c26a,#f76a8a);color:#1a0010}
+.v4096{background:linear-gradient(135deg,#7c6af7,#f76a8a);color:#fff}
+.v8192{background:#00b4d8;color:#001f2e;border-color:#00cfff}
+.v16384{background:#0096c7;color:#e0f7ff;border-color:#00b4d8}
+.v32768{background:#023e8a;color:#caf0f8;border-color:#0077b6}
+.v65536{background:#6a0572;color:#f9d6ff;border-color:#9b1faa}
+.v131072{background:linear-gradient(135deg,#f72585,#7209b7,#3a0ca3);color:#fff}
+.vA{background:linear-gradient(135deg,#f72585,#7209b7);color:#fff}
+.vB{background:linear-gradient(135deg,#4cc9f0,#4361ee);color:#fff}
+.vC{background:linear-gradient(135deg,#f8961e,#f3722c);color:#fff}
+.vD{background:linear-gradient(135deg,#43aa8b,#277da1);color:#fff}
+.vbig{background:linear-gradient(135deg,#3a0ca3,#7209b7);color:#fff}
+
+.freeze-overlay { position:absolute; inset:0; border-radius:14px; background:rgba(100,220,255,.07); border:2px solid rgba(100,220,255,.25); pointer-events:none; opacity:0; transition:opacity .3s; }
+.freeze-overlay.on { opacity:1; }
+
+.btns { display:flex; gap:7px; width:100%; max-width:360px; margin-bottom:9px; }
+.btn { flex:1; padding:9px 4px; border-radius:9px; border:1px solid var(--border); background:var(--panel); color:var(--text); font-family:'DM Sans',sans-serif; font-size:.78rem; font-weight:600; cursor:pointer; transition:border-color .15s,background .15s; }
+.btn:hover { border-color:var(--accent); }
+.btn:active { transform:scale(.97); }
+.btn.pri { background:var(--accent); border-color:var(--accent); color:#fff; }
+.btn.red { border-color:var(--accent2); color:var(--accent2); background:rgba(247,106,138,.08); }
+
+.themes { display:flex; gap:7px; }
+.tdot { width:22px; height:22px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:transform .15s,border-color .15s; }
+.tdot.on { border-color:#fff; transform:scale(1.2); }
+
+/* ── TOAST ── */
+.toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(60px); background:var(--accent); color:#fff; padding:9px 20px; border-radius:50px; font-size:.82rem; font-weight:600; z-index:999; transition:transform .25s ease; pointer-events:none; white-space:nowrap; max-width:90vw; text-align:center; }
+.toast.show { transform:translateX(-50%) translateY(0); }
+
+/* ── MODALS ── */
+.modal-bg { position:fixed; inset:0; background:rgba(10,10,15,.9); display:flex; align-items:center; justify-content:center; z-index:500; padding:20px; backdrop-filter:blur(5px); }
+.modal-bg.off { display:none; }
+.modal { background:var(--panel); border:1px solid var(--border); border-radius:18px; padding:26px 20px; text-align:center; width:100%; max-width:320px; }
+.modal h2 { font-family:'Syne',sans-serif; font-size:1.5rem; margin-bottom:7px; }
+.modal p { color:var(--muted); font-size:.83rem; line-height:1.6; margin-bottom:12px; }
+.modal .big { font-family:'Syne',sans-serif; font-size:2.1rem; color:var(--gold); margin:8px 0; }
+.ad-box { background:#1a1a28; border:1px dashed var(--muted); border-radius:9px; padding:12px; margin:8px 0; font-size:.73rem; color:var(--muted); }
+.ad-box strong { color:var(--accent2); }
+.mbtns { display:flex; gap:8px; margin-top:6px; }
+.mbtns .btn { flex:1; }
+
+/* coin reward pop */
+.coin-pop { position:fixed; font-size:1.1rem; font-weight:700; color:var(--gold); pointer-events:none; z-index:800; animation:coinFloat 1.2s ease forwards; }
+@keyframes coinFloat { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-60px)} }
+</style>
+</head>
+<body>
+
+<!-- ══ HOME ══ -->
+<div class="screen active" id="homeScreen">
+  <div class="glow1"></div><div class="glow2"></div>
+  <div class="home-logo">MERGE<br>2048</div>
+  <div class="home-sub">Power Edition</div>
+
+  <div class="home-topbar">
+    <div class="home-chip"><span class="ic">🪙</span><span class="coin-val" id="h-coins">0</span> coins</div>
+    <div class="home-chip"><span class="ic">❤️</span><span class="life-val" id="h-lives">3</span> lives</div>
+  </div>
+
+  <div class="tile-preview">
+    <div class="tp v2">2</div><div class="tp v8">8</div>
+    <div class="tp v32">32</div><div class="tp v128">128</div>
+    <div class="tp v512">512</div><div class="tp v1024">1K</div>
+    <div class="tp v2048" style="font-size:.78rem">2048</div>
+    <div class="tp vbig" style="font-size:.72rem">4096</div>
+  </div>
+
+  <div class="home-stats">
+    <div class="hstat accent-gold">
+      <div class="hstat-icon">🏆</div>
+      <div class="hstat-info">
+        <div class="val" id="h-best">0</div>
+        <div class="lbl">Best Score</div>
+      </div>
+    </div>
+    <div class="hstat-row">
+      <div class="hstat accent-purple">
+        <div class="hstat-icon">🎮</div>
+        <div class="hstat-info">
+          <div class="val" id="h-games">0</div>
+          <div class="lbl">Games</div>
+        </div>
+      </div>
+      <div class="hstat accent-pink">
+        <div class="hstat-icon">🔥</div>
+        <div class="hstat-info">
+          <div class="val" id="h-htile">—</div>
+          <div class="lbl">Top Tile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="home-btns">
+    <button class="hbtn pri" onclick="startGame('classic')">▶ Play Classic</button>
+    <button class="hbtn pri" id="resumeBtn" onclick="restoreGameState()" style="display:none;background:linear-gradient(135deg,#27ae60,#1d9e75)">↩ Resume Game</button>
+    <button class="hbtn daily" onclick="startGame('daily')">🗓 Daily Challenge</button>
+    <button class="hbtn sec" onclick="startGame('timeattack')">⏱ Time Attack</button>
+    <button class="hbtn shop-btn" onclick="showScreen('shopScreen');renderShop()">🛒 Shop</button>
+  </div>
+
+  <div class="htp">
+    <h3>How to play</h3>
+    <div class="htp-row"><div class="htp-ic">👆</div><div class="htp-t"><b>Swipe</b> or use <b>arrow keys</b> to slide tiles.</div></div>
+    <div class="htp-row"><div class="htp-ic">🔢</div><div class="htp-t"><b>Same numbers merge</b> — 8+8 becomes 16.</div></div>
+    <div class="htp-row"><div class="htp-ic">🪙</div><div class="htp-t">Earn <b>coins</b> by merging high tiles & daily challenges.</div></div>
+    <div class="htp-row"><div class="htp-ic">❤️</div><div class="htp-t">Each game uses <b>1 life</b>. Refill in the Shop.</div></div>
+  </div>
+</div>
+
+<!-- ══ SHOP ══ -->
+<div class="screen" id="shopScreen">
+  <div class="shop-header">
+    <button class="back-btn" onclick="showScreen('homeScreen');refreshHome()">← Back</button>
+    <div class="shop-title">🛒 Shop</div>
+    <div class="coin-display">🪙 <span id="shop-coins">0</span></div>
+  </div>
+
+  <div class="shop-section">Power-Ups</div>
+  <div class="shop-grid" id="shopPU"></div>
+
+  <div class="shop-section">Lives</div>
+  <div class="shop-grid" id="shopLives"></div>
+
+
+</div>
+
+<!-- ══ GAME ══ -->
+<div class="screen" id="gameScreen">
+  <div class="game-header">
+    <button class="back-btn" onclick="goHome()">← Home</button>
+    <div class="game-title">MERGE 2048</div>
+    <div style="width:58px"></div>
+  </div>
+
+  <!-- Lives + Coins bar -->
+  <div class="lives-bar">
+    <div class="lives-left">
+      <div class="life-hearts" id="lifeHearts"></div>
+      <div class="lives-timer" id="lifeTimer"></div>
+    </div>
+    <div class="lives-coin-bar">🪙 <span id="g-coins">0</span></div>
+  </div>
+
+  <div class="scores">
+    <div class="sbox"><div class="lbl">Score</div><div class="num" id="scoreEl">0</div></div>
+    <div class="sbox gold"><div class="lbl">Best</div><div class="num" id="bestEl">0</div></div>
+    <div class="sbox"><div class="lbl">Moves</div><div class="num" id="movesEl">0</div></div>
+  </div>
+
+  <div class="mode-lbl">Mode: <b id="modeEl">Classic</b></div>
+
+  <div class="timer-wrap" id="timerWrap">
+    <div class="timer-lbl">Time left: <b id="timerTxt">60s</b></div>
+    <div class="timer-track"><div class="timer-fill" id="timerFill"></div></div>
+  </div>
+
+  <div class="pubs">
+    <div class="pub" id="pb-bomb"   onclick="usePU('bomb')">  <div class="ic">💣</div><div class="nm">Bomb</div>  <div class="ct" id="ct-bomb">×0</div></div>
+    <div class="pub" id="pb-freeze" onclick="usePU('freeze')"><div class="ic">❄️</div><div class="nm">Freeze</div><div class="ct" id="ct-freeze">×0</div></div>
+    <div class="pub" id="pb-double" onclick="usePU('double')"><div class="ic">×2</div><div class="nm">Double</div><div class="ct" id="ct-double">×0</div></div>
+  </div>
+
+  <div class="grid-outer" id="gridOuter">
+    <div class="freeze-overlay" id="fzOverlay"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="btns">
+    <button class="btn" onclick="doUndo()">↩ Undo</button>
+    <button class="btn pri" onclick="restartCurrent()">Restart</button>
+    <button class="btn" onclick="goHome()">🏠 Home</button>
+  </div>
+
+  <div class="themes">
+    <div class="tdot on" style="background:linear-gradient(135deg,#7c6af7,#f76a8a)" onclick="applyTheme('default',this)"></div>
+    <div class="tdot" style="background:linear-gradient(135deg,#1a6b3c,#4af7a0)" onclick="applyTheme('jungle',this)"></div>
+    <div class="tdot" style="background:linear-gradient(135deg,#1a2b6b,#6aaff7)" onclick="applyTheme('space',this)"></div>
+    <div class="tdot" style="background:linear-gradient(135deg,#6b1a2b,#f76a6a)" onclick="applyTheme('fire',this)"></div>
+    <div class="tdot" style="background:linear-gradient(135deg,#5a3a00,#f7c26a)" onclick="applyTheme('gold',this)"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Game Over modal -->
+<div class="modal-bg off" id="goModal">
+  <div class="modal">
+    <h2>Game Over 💀</h2>
+    <div class="big" id="goScore">0</div>
+    <p id="goMsg">No more moves! Continue by clearing 3 tiles — watch an ad or spend coins.</p>
+    <div class="ad-box">📺 <strong>[AdMob Rewarded Ad]</strong><br>Add your unit ID here</div>
+    <div class="mbtns">
+      <button class="btn" onclick="closeModal('goModal');goHome()">Home</button>
+      <button class="btn sec" id="goCoinBtn" onclick="continueCoin()" style="flex:1;border:1px solid var(--gold);color:var(--gold);background:rgba(247,194,106,.08)">🪙 150</button>
+      <button class="btn pri" id="continueAdBtn" onclick="continueAd()">Watch Ad ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- Undo modal -->
+<div class="modal-bg off" id="undoModal">
+  <div class="modal">
+    <h2>↩ Undo Move</h2>
+    <p>Watch an ad or spend coins to undo.</p>
+    <div class="ad-box">📺 <strong>[AdMob Rewarded Ad]</strong></div>
+    <div class="mbtns">
+      <button class="btn" onclick="closeModal('undoModal')">Cancel</button>
+      <button class="btn sec" onclick="undoCoin()" style="border:1px solid var(--gold);color:var(--gold);background:rgba(247,194,106,.08)">🪙 60</button>
+      <button class="btn pri" onclick="undoAd()">Watch Ad ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- No lives modal -->
+<div class="modal-bg off" id="noLivesModal">
+  <div class="modal">
+    <h2>❤️ No Lives!</h2>
+    <p>You're out of lives. Watch an ad for 1 free life, or buy more in the shop.</p>
+    <div class="ad-box">📺 <strong>[AdMob Rewarded Ad]</strong></div>
+    <div class="mbtns">
+      <button class="btn" onclick="closeModal('noLivesModal')">Cancel</button>
+      <button class="btn sec" onclick="closeModal('noLivesModal');showScreen('shopScreen');renderShop()" style="border:1px solid var(--gold);color:var(--gold)">🛒 Shop</button>
+      <button class="btn pri" onclick="adLife()">Watch Ad ▶</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── PERSISTENT STORAGE ────────────────────────────
+const S = {
+  get(k,d){ try{ const v=localStorage.getItem('m2048_'+k); return v!==null?JSON.parse(v):d; }catch{ return d; } },
+  set(k,v){ try{ localStorage.setItem('m2048_'+k,JSON.stringify(v)); }catch{} }
+};
+
+let coins      = S.get('coins', 100);
+let lives      = Math.min(S.get('lives', 3), 3); // cap to 3 always
+let maxLives   = 3;
+let lifeRefill = S.get('lifeRefill', 0); // timestamp when next life refills
+let best       = S.get('best', 0);
+let gamesPlayed= S.get('games', 0);
+let highTile   = S.get('htile', 0);
+let puStock    = S.get('puStock', {bomb:2,freeze:1,double:1});
+let lastDaily  = S.get('lastDaily','');
+// Resets every new game — coins given once per tile value per game only
+let earnedMilestones = {};
+
+// ── LIFE TIMER ────────────────────────────────────
+const LIFE_MS = 30 * 60 * 1000; // 30 min per life
+let lifeTimerID = null;
+
+function saveAll(){
+  S.set('coins',coins); S.set('lives',lives);
+  S.set('lifeRefill',lifeRefill); S.set('best',best);
+  S.set('games',gamesPlayed); S.set('htile',highTile);
+  S.set('puStock',puStock);
+}
+
+function saveGameState(){
+  // Save mid-game state so player can resume if they close the app
+  S.set('savedGame',{
+    board, score, moves,
+    currentMode, taMode, dailyMode,
+    timeLeft: taMode ? timeLeft : null,
+    earnedMilestones
+  });
+}
+
+function clearSavedGame(){
+  S.set('savedGame', null);
+}
+
+function hasSavedGame(){
+  const g = S.get('savedGame', null);
+  return g && g.board && g.board.length === N;
+}
+
+function restoreGameState(){
+  const g = S.get('savedGame', null);
+  if(!g || !g.board) return false;
+
+  board         = g.board;
+  score         = g.score || 0;
+  moves         = g.moves || 0;
+  currentMode   = g.currentMode || 'classic';
+  taMode        = g.taMode  || false;
+  dailyMode     = g.dailyMode || false;
+  earnedMilestones = g.earnedMilestones || {};
+
+  activePU = null; frozen = false;
+  document.getElementById('fzOverlay').classList.remove('on');
+  stopTimer();
+
+  // Restore mode label
+  const modeNames = {classic:'Classic', daily:'Daily Challenge', timeattack:'Time Attack'};
+  document.getElementById('modeEl').textContent = modeNames[currentMode] || 'Classic';
+
+  // Time attack — restore timer (cap to 10s min so it's not unfair)
+  if(taMode){
+    document.getElementById('timerWrap').style.display='block';
+    timeLeft = Math.max(g.timeLeft || 10, 10);
+    startTimer();
+  } else {
+    document.getElementById('timerWrap').style.display='none';
+  }
+
+  showScreen('gameScreen');
+  syncPU(); render(); syncUI(); renderLivesBar();
+  toast('▶ Game resumed!');
+  return true;
+}
+
+function checkLifeRefill(){
+  if(lives>=maxLives){ lifeRefill=0; saveAll(); return; }
+  const now=Date.now();
+  if(!lifeRefill) lifeRefill=now+LIFE_MS;
+  while(lifeRefill<=now && lives<maxLives){
+    lives++; lifeRefill=lifeRefill+LIFE_MS;
+  }
+  if(lives>=maxLives) lifeRefill=0;
+  saveAll();
+}
+
+function startLifeTimer(){
+  clearInterval(lifeTimerID);
+  lifeTimerID=setInterval(()=>{
+    checkLifeRefill();
+    renderLivesBar();
+    updateHomeChips();
+  },1000);
+}
+
+function lifeTimerText(){
+  if(lives>=maxLives) return '';
+  const rem=Math.max(0,lifeRefill-Date.now());
+  const m=Math.floor(rem/60000), s=Math.floor((rem%60000)/1000);
+  return `+❤️ in ${m}:${s<10?'0':''}${s}`;
+}
+
+// ── SCREENS ───────────────────────────────────────
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function refreshHome(){
+  updateHomeChips();
+  document.getElementById('h-best').textContent = fmt(best);
+  document.getElementById('h-games').textContent = gamesPlayed;
+  document.getElementById('h-htile').textContent = highTile>=2?formatTile(highTile):'—';
+}
+function updateHomeChips(){
+  document.getElementById('h-coins').textContent = coins;
+  document.getElementById('h-lives').textContent = lives;
+}
+
+function goHome(){
+  stopTimer(); saveAll();
+  // If game is in progress (has moves), save it so player can resume
+  if(moves > 0) saveGameState();
+  refreshHome();
+  // Show resume button if a saved game exists
+  document.getElementById('resumeBtn').style.display = hasSavedGame() ? 'block' : 'none';
+  showScreen('homeScreen');
+}
+
+// ── GAME STATE ────────────────────────────────────
+const N=5;
+let board,prevBoard,prevScore;
+let score=0,moves=0;
+let activePU=null,frozen=false,freezeTO=null;
+let taMode=false,dailyMode=false,currentMode='classic';
+let timeLeft=60,timerID=null;
+
+// ── START GAME ────────────────────────────────────
+function startGame(mode){
+  checkLifeRefill();
+  if(lives<=0){ openModal('noLivesModal'); return; }
+  lives--; if(lives<maxLives && !lifeRefill) lifeRefill=Date.now()+LIFE_MS;
+  saveAll();
+
+  currentMode=mode;
+  board=Array.from({length:N},()=>Array(N).fill(0));
+  score=0; moves=0;
+  earnedMilestones={};
+  prevBoard=null; prevScore=0;
+  activePU=null; frozen=false; clearTimeout(freezeTO);
+  stopTimer(); taMode=false; dailyMode=false;
+  clearSavedGame(); // fresh start — wipe any old save
+  document.getElementById('resumeBtn').style.display='none';
+  document.getElementById('timerWrap').style.display='none';
+  document.getElementById('fzOverlay').classList.remove('on');
+
+  if(mode==='classic'){
+    document.getElementById('modeEl').textContent='Classic';
+    spawnRandom(); spawnRandom();
+  } else if(mode==='daily'){
+    const today=new Date().toDateString();
+    document.getElementById('modeEl').textContent='Daily Challenge';
+    spawnRandom(); spawnRandom();
+    const e=getEmpties();
+    const [r,c]=e[Math.floor(Math.random()*e.length)];
+    board[r][c]=64;
+    puStock.bomb+=2; puStock.freeze+=1; puStock.double+=1;
+    saveAll();
+    dailyMode=true;
+    if(lastDaily!==today){ toast('🗓 Daily! Reach 4096 in 120 moves. +2 Bomb +1 Freeze +1 Double!'); lastDaily=today; S.set('lastDaily',today); }
+    else toast('🗓 Daily mode — reach 4096 in 120 moves!');
+  } else if(mode==='timeattack'){
+    document.getElementById('modeEl').textContent='Time Attack';
+    spawnRandom(); spawnRandom();
+    document.getElementById('timerWrap').style.display='block';
+    timeLeft=60; startTimer(); taMode=true;
+    toast('⏱ 60 seconds — go!');
+  }
+
+  showScreen('gameScreen');
+  syncPU(); render(); syncUI(); renderLivesBar();
+}
+
+function restartCurrent(){ startGame(currentMode); }
+
+// ── LIVES BAR ─────────────────────────────────────
+function renderLivesBar(){
+  const hh=document.getElementById('lifeHearts');
+  hh.innerHTML='';
+  for(let i=0;i<maxLives;i++){
+    const d=document.createElement('span');
+    d.className='heart'+(i>=lives?' empty':'');
+    d.textContent='❤️';
+    hh.appendChild(d);
+  }
+  document.getElementById('lifeTimer').innerHTML = lives<maxLives ? `<b>${lifeTimerText()}</b>` : '';
+  document.getElementById('g-coins').textContent=coins;
+}
+
+// ── SPAWN ─────────────────────────────────────────
+function getEmpties(){ const e=[]; for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(!board[r][c]) e.push([r,c]); return e; }
+function spawnRandom(val){ const e=getEmpties(); if(!e.length) return false; const [r,c]=e[Math.floor(Math.random()*e.length)]; board[r][c]=val||(Math.random()<.85?2:4); return true; }
+
+// ── FIXED MERGE ───────────────────────────────────
+function slideRow(row){
+  let a=row.filter(x=>x), pts=0;
+  let merged=new Array(a.length).fill(false);
+  let newlyMerged=[]; // track exact values created by merging this move
+  for(let i=0;i<a.length-1;i++){
+    if(!merged[i] && a[i]===a[i+1]){
+      a[i]*=2; pts+=a[i];
+      newlyMerged.push(a[i]); // record this new tile value
+      merged[i]=true;
+      a.splice(i+1,1); merged.splice(i+1,1);
+    }
+  }
+  while(a.length<N) a.push(0);
+  return {out:a, pts, newlyMerged};
+}
+function getLine(i,dir){ if(dir==='L') return [...board[i]]; if(dir==='R') return [...board[i]].reverse(); if(dir==='U') return board.map(r=>r[i]); return board.map(r=>r[i]).reverse(); }
+function setLine(i,dir,arr){ if(dir==='L'){board[i]=arr;} else if(dir==='R'){board[i]=[...arr].reverse();} else if(dir==='U'){arr.forEach((v,r)=>board[r][i]=v);} else{[...arr].reverse().forEach((v,r)=>board[r][i]=v);} }
+
+function move(dir){
+  if(frozen){toast('❄️ Board frozen!');return;}
+  if(activePU==='bomb'){
+    activePU=null; syncPU(); render();
+    toast('💣 Bomb cancelled.');
+    return;
+  }
+  if(activePU==='double'){
+    activePU=null; syncPU(); render();
+    toast('×2 Double cancelled.');
+    return;
+  }
+  savePrev();
+  let moved=false, gained=0, allNewlyMerged=[];
+  for(let i=0;i<N;i++){
+    const orig=getLine(i,dir);
+    const{out,pts,newlyMerged}=slideRow([...orig]);
+    if(JSON.stringify(out)!==JSON.stringify(orig)) moved=true;
+    gained+=pts;
+    allNewlyMerged.push(...newlyMerged);
+    setLine(i,dir,out);
+  }
+  if(!moved) return;
+
+  score+=gained; moves++;
+
+  // One-time coin reward: only fires for values actually created THIS move
+  // by checking allNewlyMerged (not the whole board)
+  const milestoneCoins={4:1,8:1,16:2,32:2,64:3,128:5,256:7,512:10,1024:15,2048:25,4096:40,8192:60,16384:80,32768:100,65536:130,131072:200};
+  let totalCoinGain=0, topNewTile=0;
+  allNewlyMerged.forEach(v=>{
+    if(milestoneCoins[v] && !earnedMilestones[v]){
+      earnedMilestones[v]=true;
+      totalCoinGain+=milestoneCoins[v];
+      if(v>topNewTile) topNewTile=v;
+    }
+  });
+  if(totalCoinGain>0){
+    coins+=totalCoinGain;
+    showCoinPop('+'+totalCoinGain+'🪙 ('+topNewTile+' first!)');
+  }
+
+  if(score>best){best=score; S.set('best',best);}
+  const curHigh=board.flat().reduce((a,b)=>Math.max(a,b),0);
+  if(curHigh>highTile){
+    highTile=curHigh; S.set('htile',highTile);
+    // Celebrate milestone tiles
+    const milestones={
+      2048:'🎉 2048! Keep going!',
+      4096:'🔥 4096! On fire!',
+      8192:'⚡ 8192! Unstoppable!',
+      16384:'🚀 16K! Incredible!',
+      32768:'💎 32K! Master!',
+      65536:'👑 65K! God-tier!',
+      131072:'🌌 1A! Legend begins!',
+      262144:'🌌 2A! Deep legend!',
+      524288:'🌌 4A! Mythical!',
+      1048576:'👾 8A! Unreal!',
+      2097152:'🔱 16A! Impossible!',
+      16777216:'💥 1B! Beyond limits!',
+    };
+    if(milestones[curHigh]) toast(milestones[curHigh]);
+  }
+
+  activePU=null; syncPU(); saveAll();
+
+  if(taMode) addTime(2);
+  spawnRandom(); render(); syncUI(); renderLivesBar();
+  saveGameState(); // auto-save after every move
+
+  if(dailyMode && moves>=120){ toast('🗓 120 moves used! '+(!boardHas(4096)?'Try to reach 4096!':'4096 reached! 🎉')); dailyMode=false; }
+  if(!canMove()) setTimeout(showGameOver,300);
+}
+
+function showCoinPop(text){
+  const el=document.createElement('div');
+  el.className='coin-pop'; el.textContent=text;
+  const go=document.getElementById('gridOuter').getBoundingClientRect();
+  el.style.left=(go.left+go.width/2)+'px';
+  el.style.top=(go.top+20)+'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1300);
+}
+
+// ── INPUT ─────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  const m={ArrowLeft:'L',ArrowRight:'R',ArrowUp:'U',ArrowDown:'D'};
+  if(m[e.key]&&document.getElementById('gameScreen').classList.contains('active')){e.preventDefault();move(m[e.key]);}
+});
+(function(){
+  const el=document.getElementById('gridOuter');
+  let sx=0,sy=0;
+  el.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  el.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
+    if(Math.max(Math.abs(dx),Math.abs(dy))<20) return;
+    move(Math.abs(dx)>Math.abs(dy)?(dx>0?'R':'L'):(dy>0?'D':'U'));
+  },{passive:true});
+})();
+
+// ── RENDER ────────────────────────────────────────
+function render(){
+  const grid=document.getElementById('grid'); grid.innerHTML='';
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+    const v=board[r][c], el=document.createElement('div');
+    if(!v){
+      el.className='cell';
+    } else {
+      el.className='cell pop '+tileClass(v);
+      el.textContent = formatTile(v);
+      if(activePU==='bomb'){
+        el.classList.add('bomb-target');
+        el.addEventListener('click',()=>bombSelectTile(r,c));
+        el.addEventListener('touchend',e=>{e.preventDefault();bombSelectTile(r,c);},{passive:false});
+      } else if(activePU==='double'){
+        el.classList.add('double-target');
+        el.addEventListener('click',()=>doubleSelectTile(r,c));
+        el.addEventListener('touchend',e=>{e.preventDefault();doubleSelectTile(r,c);},{passive:false});
+      }
+    }
+    grid.appendChild(el);
+  }
+}
+function tileClass(v){
+  const m={2:'v2',4:'v4',8:'v8',16:'v16',32:'v32',64:'v64',128:'v128',256:'v256',512:'v512',1024:'v1024',2048:'v2048',4096:'v4096',8192:'v8192',16384:'v16384',32768:'v32768',65536:'v65536',131072:'v131072'};
+  if(m[v]) return m[v];
+  if(v >= LETTER_BASE){
+    const mult = v / LETTER_BASE;
+    const tierIndex = Math.floor(Math.log(mult) / Math.log(128));
+    // Cycle through 4 color classes for all letter tiers
+    const classes = ['vA','vB','vC','vD'];
+    return classes[tierIndex % classes.length];
+  }
+  return 'vbig';
+}
+function syncUI(){ document.getElementById('scoreEl').textContent=score; document.getElementById('bestEl').textContent=best; document.getElementById('movesEl').textContent=moves; }
+function syncPU(){
+  ['bomb','freeze','double'].forEach(t=>{
+    const el=document.getElementById('pb-'+t);
+    const empty=puStock[t]<=0;
+    el.className='pub'+(activePU===t?' on':'')+(empty?' grey':'');
+    const ct=document.getElementById('ct-'+t);
+    ct.textContent=empty?'+ refill':'×'+puStock[t];
+    ct.style.color=empty?'var(--accent2)':'var(--gold)';
+  });
+}
+
+// ── POWER-UPS ─────────────────────────────────────
+function usePU(type){
+  if(puStock[type]<=0){ openRefillModal(type); return; }
+  if(activePU===type){activePU=null;syncPU();return;}
+  activePU=type; syncPU();
+  if(type==='freeze') applyFreeze();
+  else if(type==='bomb'){ toast('💣 Tap the tile you want to destroy!'); render(); }
+  else if(type==='double'){ toast('×2 Tap the tile you want to double!'); render(); }
+}
+function applyFreeze(){
+  puStock.freeze--; frozen=true;
+  document.getElementById('fzOverlay').classList.add('on');
+  clearTimeout(freezeTO);
+  toast('❄️ Frozen 5s!');
+  freezeTO=setTimeout(()=>{frozen=false;document.getElementById('fzOverlay').classList.remove('on');toast('❄️ Freeze lifted!');},5000);
+  activePU=null; syncPU(); saveAll();
+}
+function bombSelectTile(r,c){
+  if(activePU!=='bomb') return;
+  const v=board[r][c];
+  board[r][c]=0;
+  puStock.bomb--;
+  activePU=null;
+  syncPU(); saveAll(); render(); syncUI();
+  toast('💣 '+v+' tile destroyed!');
+}
+function doubleSelectTile(r,c){
+  if(activePU!=='double') return;
+  const v=board[r][c];
+  const newV=v*2;
+  board[r][c]=newV;
+  puStock.double--;
+  activePU=null;
+  // check milestone for the new doubled tile value
+  const milestoneCoins={4:1,8:1,16:2,32:2,64:3,128:5,256:7,512:10,1024:15,2048:25,4096:40,8192:60,16384:80,32768:100,65536:130,131072:200};
+  if(milestoneCoins[newV] && !earnedMilestones[newV]){
+    earnedMilestones[newV]=true;
+    coins+=milestoneCoins[newV];
+    showCoinPop('+'+milestoneCoins[newV]+'🪙 ('+newV+' first!)');
+  }
+  if(newV>highTile){highTile=newV; S.set('htile',highTile);}
+  syncPU(); saveAll(); render(); syncUI();
+  toast('×2 '+formatTile(v)+' → '+formatTile(newV)+'!');
+}
+function applyBomb(){
+  // kept only as safety fallback, not called in normal flow
+  let minV=Infinity,minR=-1,minC=-1;
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(board[r][c]&&board[r][c]<minV){minV=board[r][c];minR=r;minC=c;}
+  if(minR>=0){board[minR][minC]=0;toast('💣 Blasted the '+minV+'!');}
+  puStock.bomb--; saveAll();
+}
+
+// Refill modal (shared for all PU types)
+let refillTarget='';
+function openRefillModal(type){
+  refillTarget=type;
+  const names={bomb:'Bomb💣',freeze:'Freeze❄️',double:'Double×2'};
+  const costs={bomb:80,freeze:100,double:120};
+  document.getElementById('refillCost').textContent=costs[type];
+  const canAfford=coins>=costs[type];
+  document.getElementById('refillCoinBtn').classList.toggle('disabled2',!canAfford);
+  openModal('refillModal');
+}
+// ── CENTRAL AD HANDLER ────────────────────────────
+// In production: replace showAd() body with your AdMob rewarded ad call.
+// adAvailable = simulates whether an ad is loaded. Set true for testing.
+let adAvailable = true;
+
+function showAd(onRewarded){
+  if(!adAvailable){
+    // Ad not available — show friendly message
+    toast('⚠️ No ad available right now. Use coins instead!');
+    return;
+  }
+  // Simulate ad with a countdown overlay
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(10,10,15,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;';
+  overlay.innerHTML=`
+    <div style="font-size:2.5rem;margin-bottom:12px">📺</div>
+    <div style="font-family:Syne,sans-serif;font-size:1.1rem;font-weight:700;color:#e8e8f0;margin-bottom:6px">Watching Ad...</div>
+    <div style="font-size:.8rem;color:#6b6b8a;margin-bottom:24px">Your reward is waiting</div>
+    <div style="width:200px;height:6px;background:#1e1e2e;border-radius:50px;overflow:hidden;margin-bottom:16px">
+      <div id="adProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#7c6af7,#f76a8a);border-radius:50px;transition:width 30s linear;"></div>
+    </div>
+    <div id="adCountdown" style="font-size:.85rem;color:#6b6b8a;">Closing in 30s...</div>
+  `;
+  document.body.appendChild(overlay);
+  let t=30;
+  setTimeout(()=>{ document.getElementById('adProgressBar').style.width='100%'; },50);
+  const iv=setInterval(()=>{
+    t--;
+    const cd=document.getElementById('adCountdown');
+    if(cd) cd.textContent=t>0?'Closing in '+t+'s...':'Done!';
+    if(t<=0){
+      clearInterval(iv);
+      overlay.remove();
+      onRewarded();
+    }
+  },1000);
+}
+
+function refillAd(){
+  closeModal('refillModal');
+  showAd(()=>{
+    puStock[refillTarget]+=2; syncPU(); saveAll();
+    toast('🎁 +2 '+refillTarget+' rewarded!');
+  });
+}
+function undoAd(){
+  closeModal('undoModal');
+  showAd(()=>{ doUndoAction(); toast('🎁 Move undone! ↩'); });
+}
+function adLife(){
+  closeModal('noLivesModal');
+  showAd(()=>{
+    lives=Math.min(maxLives,lives+1);
+    if(lives<maxLives&&!lifeRefill) lifeRefill=Date.now()+LIFE_MS;
+    saveAll(); toast('🎁 +1 life rewarded!'); updateHomeChips();
+  });
+}
+function continueAd(){
+  closeModal('goModal');
+  showAd(()=>{
+    continueAdsWatched++;
+    if(continueAdsWatched < continueAdsRequired){
+      // Need one more ad — reopen modal with updated state
+      updateGoModal();
+      openModal('goModal');
+      toast('Ad '+ continueAdsWatched +'/'+continueAdsRequired+' done! Watch the next one ▶');
+    } else {
+      // All ads watched — continue!
+      clearBoardForContinue();
+      puStock.bomb++; puStock.freeze++; syncPU(); saveAll();
+      const msg = continueAdsRequired === 2
+        ? '🎁 Both ads done — 3 tiles cleared + power-ups!'
+        : '🎁 Ad watched — 3 tiles cleared + power-ups!';
+      toast(msg);
+    }
+  });
+}
+function refillCoin(){
+  const costs={bomb:80,freeze:100,double:120};
+  const cost=costs[refillTarget];
+  if(coins<cost){toast('Not enough coins!');return;}
+  coins-=cost; puStock[refillTarget]+=2;
+  closeModal('refillModal'); syncPU(); saveAll(); renderLivesBar();
+  toast('🪙 Spent '+cost+' coins — +2 '+refillTarget+'!');
+}
+
+// ── UNDO ──────────────────────────────────────────
+function savePrev(){prevBoard=board.map(r=>[...r]);prevScore=score;}
+function doUndo(){ if(!prevBoard){toast('Nothing to undo!');return;} openModal('undoModal'); }
+function undoCoin(){
+  if(coins<60){closeModal('undoModal');toast('Not enough coins! Need 60🪙');return;}
+  coins-=60; closeModal('undoModal'); doUndoAction(); saveAll(); renderLivesBar(); toast('🪙 -60 coins — move undone! ↩');
+}
+function doUndoAction(){ board=prevBoard.map(r=>[...r]); score=prevScore; prevBoard=null; render(); syncUI(); }
+
+// ── TIMER ─────────────────────────────────────────
+function startTimer(){ stopTimer(); updateTimerUI(); timerID=setInterval(()=>{timeLeft--;updateTimerUI();if(timeLeft<=0){stopTimer();showGameOver();}},1000); }
+function stopTimer(){ clearInterval(timerID); timerID=null; }
+function addTime(s){ timeLeft=Math.min(60,timeLeft+s); updateTimerUI(); }
+function updateTimerUI(){ document.getElementById('timerTxt').textContent=timeLeft+'s'; document.getElementById('timerFill').style.width=(timeLeft/60*100)+'%'; document.getElementById('timerFill').style.background=timeLeft>15?'linear-gradient(90deg,var(--accent),var(--accent2))':'linear-gradient(90deg,#f76a1a,#f76a8a)'; }
+
+// ── GAME OVER / WIN ───────────────────────────────
+let continueAdsRequired = 1;
+let continueAdsWatched  = 0;
+
+function getAdTier(topTile){
+  if(topTile >= LETTER_BASE) return 2; // 1A+ → 2 ads
+  return 1;
+}
+
+function getCoinTier(topTile){
+  if(topTile >= LETTER_BASE) return 500; // 1A+
+  return 150;
+}
+
+function getTopTile(){
+  return board.flat().reduce((a,b)=>Math.max(a,b), 0);
+}
+
+function showGameOver(){
+  stopTimer(); gamesPlayed++; saveAll();
+  clearSavedGame();
+  document.getElementById('goScore').textContent = score;
+  const topTile = getTopTile();
+  continueAdsRequired = getAdTier(topTile);
+  continueAdsWatched  = 0;
+  updateGoModal();
+  openModal('goModal');
+}
+
+function updateGoModal(){
+  const topTile   = getTopTile();
+  const adCount   = getAdTier(topTile);
+  const coinCost  = getCoinTier(topTile);
+  const watched   = continueAdsWatched;
+  const remaining = adCount - watched;
+  const tileLabel = formatTile(topTile);
+
+  // Message
+  const msgs = {
+    1: 'No more moves! Watch an ad or spend coins to continue.',
+    2: `🔥 Incredible! <b style="color:var(--gold)">${tileLabel}</b> tile! Watch <b style="color:var(--accent2)">2 ads</b> to continue (${watched}/2 watched).`,
+  };
+  document.getElementById('goMsg').innerHTML = msgs[adCount] || msgs[1];
+
+  // Ad button
+  const btn = document.getElementById('continueAdBtn');
+  btn.textContent = adCount > 1
+    ? `Watch Ad ${watched+1}/${adCount} ▶`
+    : 'Watch Ad ▶';
+
+  // Coin button
+  document.getElementById('goCoinBtn').textContent = '🪙 ' + coinCost;
+}
+function showWin(){
+  // Game never ends — instead show a milestone celebration toast
+  const bonus=50; coins+=bonus; saveAll();
+  toast('🎉 2048 reached! +'+bonus+'🪙 Keep going!');
+}
+function clearBoardForContinue(){
+  // Remove the 3 lowest-value tiles to open up space so moves are possible
+  for(let pass=0;pass<3;pass++){
+    let minV=Infinity,minR=-1,minC=-1;
+    for(let r=0;r<N;r++) for(let c=0;c<N;c++)
+      if(board[r][c] && board[r][c]<minV){minV=board[r][c];minR=r;minC=c;}
+    if(minR>=0) board[minR][minC]=0;
+  }
+  // If still no moves, keep clearing until a move exists
+  let safety=0;
+  while(!canMove() && safety<20){
+    let minV=Infinity,minR=-1,minC=-1;
+    for(let r=0;r<N;r++) for(let c=0;c<N;c++)
+      if(board[r][c] && board[r][c]<minV){minV=board[r][c];minR=r;minC=c;}
+    if(minR>=0) board[minR][minC]=0;
+    safety++;
+  }
+  render();
+}
+function continueCoin(){
+  const topTile = board.flat().reduce((a,b)=>Math.max(a,b), 0);
+  const cost = topTile >= 1000000 ? 400 : 150;
+  if(coins<cost){toast('Need '+cost+'🪙 to continue!');return;}
+  coins-=cost; closeModal('goModal');
+  clearBoardForContinue();
+  saveAll(); renderLivesBar();
+  toast('🪙 -'+cost+' coins — 3 tiles cleared!');
+}
+
+// ── HELPERS ───────────────────────────────────────
+function boardHas(v){ return board.some(r=>r.some(c=>c===v)); }
+function canMove(){ for(let r=0;r<N;r++) for(let c=0;c<N;c++){if(!board[r][c])return true;if(c<N-1&&board[r][c]===board[r][c+1])return true;if(r<N-1&&board[r][c]===board[r+1][c])return true;} return false; }
+// Tile display system:
+// 131072=1A, 262144=2A ... 128A→1B ... 128Z→1ab, 2ab...
+// Single letters: uppercase A-Z (26 tiers)
+// Double letters: lowercase aa,ab,ac...az,ba...zz (676 tiers)
+// Triple letters: lowercase aaa,aab... (infinite)
+const LETTER_BASE = 131072;
+const ALPHA = 'abcdefghijklmnopqrstuvwxyz';
+
+function getLetterSuffix(tierIndex){
+  // tierIndex 0=A, 1=B ... 25=Z, 26=aa, 27=ab ... 51=az, 52=ba ...
+  if(tierIndex < 26){
+    return ALPHA[tierIndex]; // a-z (all lowercase)
+  }
+  // compound: all lowercase
+  let idx = tierIndex - 26;
+  let suffix = '';
+  // base-26 encoding for compound letters
+  // 26=aa(0,0), 27=ab(0,1)...51=az(0,25), 52=ba(1,0)...
+  // length 2: 26*26=676, length 3: 26^3 ...
+  let len = 2;
+  let count = 26 * 26;
+  let start = 0;
+  while(idx >= count){
+    idx -= count;
+    len++;
+    count = Math.pow(26, len);
+    start = 0;
+  }
+  // encode idx as len-digit base-26
+  suffix = '';
+  let tmp = idx;
+  for(let i = 0; i < len; i++){
+    suffix = ALPHA[tmp % 26] + suffix;
+    tmp = Math.floor(tmp / 26);
+  }
+  return suffix;
+}
+
+function formatTile(v){
+  if(v < LETTER_BASE){
+    if(v < 1000) return String(v);
+    return (v / 1000).toFixed(v % 1000 === 0 ? 0 : 1) + 'K';
+  }
+  // mult = how many LETTER_BASEs fit in v
+  const mult = v / LETTER_BASE;
+  // tierIndex = which letter group (0=A tier, 1=B tier ...)
+  // Each tier covers multipliers 1..127 (128x = next tier)
+  const tierIndex = Math.floor(Math.log(mult) / Math.log(128));
+  const suffix = getLetterSuffix(tierIndex);
+  const num = mult / Math.pow(128, tierIndex);
+  const numStr = num >= 10 ? Math.round(num) : (Number.isInteger(num) ? num : parseFloat(num.toFixed(1)));
+  return numStr + suffix;
+}
+function fmt(v){ return formatTile(v); }
+
+// ── MODALS ────────────────────────────────────────
+function openModal(id){ document.getElementById(id).classList.remove('off'); }
+function closeModal(id){ document.getElementById(id).classList.add('off'); }
+
+let toastTO;
+function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTO); toastTO=setTimeout(()=>el.classList.remove('show'),2500); }
+
+// ── THEMES ────────────────────────────────────────
+const themeMap={
+  default:{'--bg':'#0a0a0f','--panel':'#13131c','--accent':'#7c6af7','--accent2':'#f76a8a','--border':'#1e1e2e','--empty':'#1a1a28'},
+  jungle: {'--bg':'#040d07','--panel':'#0a1810','--accent':'#4af7a0','--accent2':'#a0f74a','--border':'#0d2415','--empty':'#081408'},
+  space:  {'--bg':'#05060f','--panel':'#0b0e1c','--accent':'#6aaff7','--accent2':'#af6af7','--border':'#101628','--empty':'#090c18'},
+  fire:   {'--bg':'#0f0404','--panel':'#1c0a0a','--accent':'#f76a1a','--accent2':'#f7c26a','--border':'#2a0d0d','--empty':'#180606'},
+  gold:   {'--bg':'#0e0b04','--panel':'#1a1608','--accent':'#f7c26a','--accent2':'#f7a030','--border':'#28200a','--empty':'#141208'},
+};
+function applyTheme(name,el){ Object.entries(themeMap[name]).forEach(([k,v])=>document.documentElement.style.setProperty(k,v)); document.querySelectorAll('.tdot').forEach(d=>d.classList.remove('on')); el.classList.add('on'); toast('Theme: '+name[0].toUpperCase()+name.slice(1)); }
+
+// ── SHOP ──────────────────────────────────────────
+function renderShop(){
+  document.getElementById('shop-coins').textContent=coins;
+
+  const puItems=[
+    {icon:'💣',name:'Bomb ×3',desc:'Destroy the lowest tile on board',coinCost:120,adLabel:'Watch Ad',type:'bomb',qty:3},
+    {icon:'❄️',name:'Freeze ×2',desc:'Freeze board for 5 seconds',coinCost:150,adLabel:'Watch Ad',type:'freeze',qty:2},
+    {icon:'×2',name:'Double ×2',desc:'Next merge gives 2× points',coinCost:180,adLabel:'Watch Ad',type:'double',qty:2},
+    {icon:'🔙',name:'Undo ×3',desc:'Undo your last 3 moves',coinCost:90,adLabel:'Watch Ad',type:'undo',qty:3},
+  ];
+  const livesItems=[
+    {icon:'❤️',name:'+1 Life',desc:'Restore one life instantly',coinCost:100,adLabel:'Watch Ad',type:'life1',qty:1},
+    {icon:'❤️❤️',name:'Full Lives',desc:'Refill all 3 lives at once',coinCost:250,adLabel:'Watch Ad',type:'life5',qty:3},
+    {icon:'⏱',name:'Life Timer ×2',desc:'Halve the refill wait time (session)',coinCost:150,adLabel:'Watch Ad',type:'lifespeed',qty:0},
+  ];
+  function makeCard(item){
+    const canAfford = item.coinCost!==null && coins>=item.coinCost;
+    return `<div class="shop-card" onclick="buyItem('${item.type}',${item.coinCost},${item.qty})">
+      <div class="sc-icon">${item.icon}</div>
+      <div class="sc-name">${item.name}</div>
+      <div class="sc-desc">${item.desc}</div>
+      ${item.coinCost!==null
+        ? `<span class="sc-price${canAfford?'':' disabled2'}">🪙 ${item.coinCost}</span>`
+        : `<span class="sc-price ad">${item.adLabel}</span>`}
+    </div>`;
+  }
+
+  document.getElementById('shopPU').innerHTML    = puItems.map(makeCard).join('');
+  document.getElementById('shopLives').innerHTML = livesItems.map(makeCard).join('');
+}
+
+function buyItem(type,cost,qty){
+  if(cost!==null){
+    if(coins<cost){toast('Not enough coins! Need '+cost+'🪙');return;}
+    coins-=cost; saveAll();
+    document.getElementById('shop-coins').textContent=coins;
+  }
+  if(type==='bomb'||type==='freeze'||type==='double'){puStock[type]+=qty; saveAll(); toast('✅ +'+qty+' '+type+'!'); }
+  else if(type==='undo'){puStock._undo=(puStock._undo||0)+qty; saveAll(); toast('✅ +'+qty+' undos!'); }
+  else if(type==='life1'){lives=Math.min(maxLives,lives+1);saveAll();toast('❤️ +1 life!');updateHomeChips();}
+  else if(type==='life5'){lives=maxLives;lifeRefill=0;saveAll();toast('❤️❤️❤️ Full 3 lives!');updateHomeChips();}
+  else if(type==='lifespeed'){toast('⏱ Life timer halved for this session!');}
+  renderShop();
+}
+
+// Refill modal HTML (injected)
+document.body.insertAdjacentHTML('beforeend',`
+<div class="modal-bg off" id="refillModal">
+  <div class="modal">
+    <h2 id="refillName">Refill</h2>
+    <p>You're out! Watch an ad for +2 free, or spend coins.</p>
+    <div class="ad-box">📺 <strong>[AdMob Rewarded Ad]</strong></div>
+    <div class="mbtns">
+      <button class="btn" onclick="closeModal('refillModal')">Cancel</button>
+      <button class="btn sec" id="refillCoinBtn" onclick="refillCoin()" style="border:1px solid var(--gold);color:var(--gold);background:rgba(247,194,106,.08)">🪙 <span id="refillCost">30</span></button>
+      <button class="btn pri" onclick="refillAd()">Watch Ad ▶</button>
+    </div>
+  </div>
+</div>`);
+
+// ── BOOT ──────────────────────────────────────────
+checkLifeRefill();
+startLifeTimer();
+refreshHome();
+
+// Show Resume button if a saved game exists
+if(hasSavedGame()){
+  document.getElementById('resumeBtn').style.display='block';
+}
+</script>
+</body>
+</html>
